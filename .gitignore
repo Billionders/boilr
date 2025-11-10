@@ -26,6 +26,3 @@ _testmain.go
 # dep management files
 glide.lock
 vendor
-
-# don't accidentally commit a build of main
-boilr
