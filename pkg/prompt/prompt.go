@@ -116,7 +116,9 @@ func scanLine() (string, error) {
 		return line, err
 	}
 
-	return strings.TrimSuffix(line, "\n"), nil
+	// Trim both Unix (\n) and Windows (\r\n) line endings to avoid stray
+	// carriage returns sneaking into template names on Windows.
+	return strings.TrimRight(line, "\r\n"), nil
 }
 
 // New returns a prompt closure when executed asks for
