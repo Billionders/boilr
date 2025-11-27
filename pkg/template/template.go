@@ -166,21 +166,19 @@ func sanitizePathForWindows(path string) string {
 		return path
 	}
 
-	// Windows 禁用的字符: < > : " | ? * { }
-	// 注意：/ 和 \ 是路径分隔符，需要保留
-	// 冒号 : 仅在盘符处允许，但在文件名中非法
-	invalidChars := "<>:\"| ?*{}"
+	// Windows 禁用的字符: < > : " \ | ? * { }
+	invalidChars := "<>:\"\\|?*{}"
 
 	// 对路径的每个部分分别处理，保留路径分隔符
 	parts := strings.Split(path, string(filepath.Separator))
 	for i, part := range parts {
-		part = strings.Map(func(r rune) rune {
+		cleanPart := strings.Map(func(r rune) rune {
 			if strings.ContainsRune(invalidChars, r) {
 				return '_' // 替换为下划线
 			}
 			return r
 		}, part)
-		parts[i] = part
+		parts[i] = cleanPart
 	}
 
 	return filepath.Join(parts...)
@@ -209,20 +207,29 @@ func (t *dirTemplate) Execute(dirPrefix string) error {
 			return err
 		}
 
+		// ===== 关键修复：Windows 路径分隔符问题 =====
+		// 在 Windows 上，filepath.Rel 返回使用 \ 的路径
+		// 但 Go 模板引擎会将 \ 视为转义字符
+		// 因此需要规范化为 Unix 风格的路径用于模板处理
+		templatePath := strings.ReplaceAll(oldName, "\\", "/")
+
 		buf := stringutil.NewString("")
 
 		// TODO translate errors into meaningful ones
 		fnameTmpl := template.Must(template.
 			New("file name template").
 			Option(Options...).
-			Funcs(FuncMap).
-			Parse(oldName))
+			Funcs(t.FuncMap).
+			Parse(templatePath)) // ← 使用规范化后的路径
 
 		if err := fnameTmpl.Execute(buf, nil); err != nil {
 			return err
 		}
 
 		newName := buf.String()
+
+		// 转回系统特定的路径分隔符
+		newName = strings.ReplaceAll(newName, "/", string(filepath.Separator))
 
 		// Windows 特定处理：清理路径中的非法字符
 		newName = sanitizePathForWindows(newName)
@@ -268,7 +275,7 @@ func (t *dirTemplate) Execute(dirPrefix string) error {
 			contentsTmpl := template.Must(template.
 				New("file contents template").
 				Option(Options...).
-				Funcs(FuncMap).
+				Funcs(t.FuncMap).
 				ParseFiles(filename))
 
 			fileTemplateName := filepath.Base(filename)
