@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strings"
 	"text/template"
 
 	"github.com/Billionders/boilr/pkg/boilr"
@@ -157,6 +159,33 @@ func (t *dirTemplate) BindPrompts() {
 	}
 }
 
+// sanitizePathForWindows 为 Windows 清理路径中的非法字符
+// Windows 不允许以下字符在文件名中: < > : " / \ | ? * { }
+func sanitizePathForWindows(path string) string {
+	if runtime.GOOS != "windows" {
+		return path
+	}
+
+	// Windows 禁用的字符: < > : " | ? * { }
+	// 注意：/ 和 \ 是路径分隔符，需要保留
+	// 冒号 : 仅在盘符处允许，但在文件名中非法
+	invalidChars := "<>:\"| ?*{}"
+
+	// 对路径的每个部分分别处理，保留路径分隔符
+	parts := strings.Split(path, string(filepath.Separator))
+	for i, part := range parts {
+		part = strings.Map(func(r rune) rune {
+			if strings.ContainsRune(invalidChars, r) {
+				return '_' // 替换为下划线
+			}
+			return r
+		}, part)
+		parts[i] = part
+	}
+
+	return filepath.Join(parts...)
+}
+
 // Execute fills the template with the project metadata.
 func (t *dirTemplate) Execute(dirPrefix string) error {
 	t.BindPrompts()
@@ -194,6 +223,9 @@ func (t *dirTemplate) Execute(dirPrefix string) error {
 		}
 
 		newName := buf.String()
+
+		// Windows 特定处理：清理路径中的非法字符
+		newName = sanitizePathForWindows(newName)
 
 		target := filepath.Join(dirPrefix, newName)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Billionders/boilr/pkg/util/exit"
 	"github.com/Billionders/boilr/pkg/util/osutil"
@@ -60,11 +61,29 @@ func IsTemplateDirInitialized() (bool, error) {
 	return osutil.DirExists(Configuration.TemplateDirPath)
 }
 
-func init() {
+// getUserHomeDir 跨平台获取用户主目录
+func getUserHomeDir() (string, error) {
+	if runtime.GOOS == "windows" {
+		// Windows 系统使用 USERPROFILE
+		homeDir := os.Getenv("USERPROFILE")
+		if homeDir == "" {
+			return "", fmt.Errorf("environment variable USERPROFILE is not set")
+		}
+		return homeDir, nil
+	}
+
+	// Unix/Linux/macOS 系统使用 HOME
 	homeDir := os.Getenv("HOME")
 	if homeDir == "" {
-		// FIXME is this really necessary?
-		exit.Error(fmt.Errorf("environment variable ${HOME} should be set"))
+		return "", fmt.Errorf("environment variable HOME is not set")
+	}
+	return homeDir, nil
+}
+
+func init() {
+	homeDir, err := getUserHomeDir()
+	if err != nil {
+		exit.Error(err)
 	}
 
 	Configuration.FilePath = filepath.Join(homeDir, ConfigDirPath, ConfigFileName)

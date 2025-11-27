@@ -8,7 +8,6 @@ import (
 	cli "github.com/spf13/cobra"
 
 	"github.com/Billionders/boilr/pkg/boilr"
-	"github.com/Billionders/boilr/pkg/util/exec"
 	"github.com/Billionders/boilr/pkg/util/exit"
 	"github.com/Billionders/boilr/pkg/util/osutil"
 	"github.com/Billionders/boilr/pkg/util/validate"
@@ -51,7 +50,7 @@ var Save = &cli.Command{
 			}
 		}
 
-		if _, err := exec.Cmd("cp", "-r", tmplDir, targetDir); err != nil {
+		if err := osutil.CopyRecursively(tmplDir, targetDir); err != nil {
 			exit.Error(err)
 		}
 
