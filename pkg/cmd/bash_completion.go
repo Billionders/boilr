@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/Billionders/boilr/pkg/boilr"
 	"github.com/Billionders/boilr/pkg/util/exit"
@@ -13,11 +12,6 @@ import (
 )
 
 func configureBashCompletion() error {
-	// Windows 不支持 Bash completion
-	if runtime.GOOS == "windows" {
-		return fmt.Errorf("bash completion is not available on Windows")
-	}
-
 	bashCompletionFilePath := filepath.Join(boilr.Configuration.ConfigDirPath, "completion.bash")
 
 	if err := Root.GenBashCompletionFile(bashCompletionFilePath); err != nil {
@@ -61,11 +55,6 @@ var ConfigureBashCompletion = &cli.Command{
 	Use:    "configure-bash-completion",
 	Short:  "Configure bash the auto-completion",
 	Run: func(c *cli.Command, _ []string) {
-		// 在 Windows 上提示不支持
-		if runtime.GOOS == "windows" {
-			exit.GoodEnough("Bash completion is not supported on Windows platform. This command is only available on Unix-like systems (Linux, macOS).")
-		}
-
 		if err := configureBashCompletion(); err != nil {
 			exit.Fatal(fmt.Errorf("configure-bash-completion: %s", err))
 		}

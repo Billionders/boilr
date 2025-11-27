@@ -166,19 +166,21 @@ func sanitizePathForWindows(path string) string {
 		return path
 	}
 
-	// Windows 禁用的字符: < > : " \ | ? * { }
-	invalidChars := "<>:\"\\|?*{}"
+	// Windows 禁用的字符: < > : " | ? * { }
+	// 注意：/ 和 \ 是路径分隔符，需要保留
+	// 冒号 : 仅在盘符处允许，但在文件名中非法
+	invalidChars := "<>:\"| ?*{}"
 
 	// 对路径的每个部分分别处理，保留路径分隔符
 	parts := strings.Split(path, string(filepath.Separator))
 	for i, part := range parts {
-		cleanPart := strings.Map(func(r rune) rune {
+		part = strings.Map(func(r rune) rune {
 			if strings.ContainsRune(invalidChars, r) {
 				return '_' // 替换为下划线
 			}
 			return r
 		}, part)
-		parts[i] = cleanPart
+		parts[i] = part
 	}
 
 	return filepath.Join(parts...)
@@ -227,9 +229,6 @@ func (t *dirTemplate) Execute(dirPrefix string) error {
 		}
 
 		newName := buf.String()
-
-		// 转回系统特定的路径分隔符
-		newName = strings.ReplaceAll(newName, "/", string(filepath.Separator))
 
 		// Windows 特定处理：清理路径中的非法字符
 		newName = sanitizePathForWindows(newName)
